@@ -8,8 +8,20 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class RentalsApp extends Application {
+
+    // All ComboBoxes at class level
+    private ComboBox<String> customerComboBox = new ComboBox<>();
+    private ComboBox<String> genreComboBox = new ComboBox<>();
+    private ComboBox<String> moviesComboBox = new ComboBox<>();
+    private ComboBox<String> borrowedComboBox = new ComboBox<>();
+    private ComboBox<String> returnedComboBox = new ComboBox<>();
 
     @Override
     public void start(Stage stage) {
@@ -18,12 +30,6 @@ public class RentalsApp extends Application {
         Text text3 = new Text("Movies:");
         Text text4 = new Text("Borrowed:");
         Text text5 = new Text("Returned:");
-
-        ComboBox<String> customerComboBox = new ComboBox<>();
-        ComboBox<String> genreComboBox = new ComboBox<>();
-        ComboBox<String> moviesComboBox = new ComboBox<>();
-        ComboBox<String> borrowedComboBox = new ComboBox<>();
-        ComboBox<String> returnedComboBox = new ComboBox<>();
 
         Button saveButton = new Button("Save Rental");
         Button returnButton = new Button("Return Movie");
@@ -64,10 +70,184 @@ public class RentalsApp extends Application {
         borrowedComboBox.setMaxWidth(Double.MAX_VALUE);
         returnedComboBox.setMaxWidth(Double.MAX_VALUE);
 
+        // ── DATABASE: Load customers and genres when app opens ──
+        loadCustomers();
+        loadGenres();
+
+        // ── When genre changes load its movies ──
+        genreComboBox.setOnAction(e -> {
+            String selectedGenre = genreComboBox.getValue();
+            if (selectedGenre != null) {
+                loadMoviesByGenre(selectedGenre);
+            }
+        });
+
+        // ── When customer changes load their borrowed and returned ──
+        customerComboBox.setOnAction(e -> {
+            String selectedCustomer = customerComboBox.getValue();
+            if (selectedCustomer != null) {
+                loadBorrowed(selectedCustomer);
+                loadReturned(selectedCustomer);
+            }
+        });
+
+        // ── Save Rental button ──
+        saveButton.setOnAction(e -> {
+            String customer = customerComboBox.getValue();
+            String movie = moviesComboBox.getValue();
+            if (customer != null && movie != null) {
+                saveRental(customer, movie);
+            } else {
+                System.out.println("Please select a customer and a movie!");
+            }
+        });
+
+        // ── Return Movie button ──
+        returnButton.setOnAction(e -> {
+            String customer = customerComboBox.getValue();
+            String movie = borrowedComboBox.getValue();
+            if (customer != null && movie != null) {
+                returnMovie(customer, movie);
+            } else {
+                System.out.println("Please select a customer and a borrowed movie!");
+            }
+        });
+
         Scene scene = new Scene(gridPane);
         stage.setTitle("Rentals");
         stage.setScene(scene);
         stage.show();
+    }
+
+    // ── LOAD customers ──
+    private void loadCustomers() {
+        String sql = "SELECT fullname FROM clients WHERE isactive = 1";
+        try (Connection conn = DBConnection.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            customerComboBox.getItems().clear();
+            while (rs.next()) {
+                customerComboBox.getItems().add(rs.getString("fullname"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ── LOAD genres ──
+    private void loadGenres() {
+        String sql = "SELECT genre FROM genres WHERE isactive = 1";
+        try (Connection conn = DBConnection.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            genreComboBox.getItems().clear();
+            while (rs.next()) {
+                genreComboBox.getItems().add(rs.getString("genre"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ── LOAD movies by genre ──
+    private void loadMoviesByGenre(String genre) {
+        String sql = "SELECT m.title FROM movies m " +
+                "JOIN genres g ON m.genre_id = g.id " +
+                "WHERE g.genre = ? AND m.isactive = 1";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            pst.setString(1, genre);
+            ResultSet rs = pst.executeQuery();
+            moviesComboBox.getItems().clear();
+            while (rs.next()) {
+                moviesComboBox.getItems().add(rs.getString("title"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ── SAVE rental ──
+    private void saveRental(String customerName, String movieTitle) {
+        String sql = "INSERT INTO rentals (client_id, movie_id, returned) " +
+                "VALUES (" +
+                "(SELECT id FROM clients WHERE fullname = ?), " +
+                "(SELECT id FROM movies WHERE title = ?), " +
+                "0)";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            pst.setString(1, customerName);
+            pst.setString(2, movieTitle);
+            pst.executeUpdate();
+            System.out.println("Rental saved!");
+            loadBorrowed(customerName);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ── LOAD borrowed movies ──
+    private void loadBorrowed(String customerName) {
+        String sql = "SELECT m.title FROM rentals r " +
+                "JOIN movies m ON r.movie_id = m.id " +
+                "JOIN clients c ON r.client_id = c.id " +
+                "WHERE c.fullname = ? AND r.returned = 0";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            pst.setString(1, customerName);
+            ResultSet rs = pst.executeQuery();
+            borrowedComboBox.getItems().clear();
+            while (rs.next()) {
+                borrowedComboBox.getItems().add(rs.getString("title"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ── RETURN a movie ──
+    private void returnMovie(String customerName, String movieTitle) {
+        String sql = "UPDATE rentals SET returned = 1 " +
+                "WHERE client_id = (SELECT id FROM clients WHERE fullname = ?) " +
+                "AND movie_id = (SELECT id FROM movies WHERE title = ?) " +
+                "AND returned = 0";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            pst.setString(1, customerName);
+            pst.setString(2, movieTitle);
+            pst.executeUpdate();
+            System.out.println("Movie returned!");
+            loadBorrowed(customerName);
+            loadReturned(customerName);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ── LOAD returned movies ──
+    private void loadReturned(String customerName) {
+        String sql = "SELECT m.title FROM rentals r " +
+                "JOIN movies m ON r.movie_id = m.id " +
+                "JOIN clients c ON r.client_id = c.id " +
+                "WHERE c.fullname = ? AND r.returned = 1";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            pst.setString(1, customerName);
+            ResultSet rs = pst.executeQuery();
+            returnedComboBox.getItems().clear();
+            while (rs.next()) {
+                returnedComboBox.getItems().add(rs.getString("title"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {

@@ -8,15 +8,22 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class GenresApp extends Application {
+
+    // Make comboBox a class variable so all methods can access it
+    private ComboBox<String> comboBox = new ComboBox<>();
 
     @Override
     public void start(Stage stage) {
         Text text1 = new Text("Name:");
         Text text2 = new Text("Registered:");
         TextField textField1 = new TextField();
-        ComboBox<String> comboBox = new ComboBox<>();
         Button button1 = new Button("Save");
         Button button2 = new Button("Remove");
 
@@ -43,10 +50,83 @@ public class GenresApp extends Application {
         button2.setMaxWidth(Double.MAX_VALUE);
         comboBox.setMaxWidth(Double.MAX_VALUE);
 
+        // ── DATABASE: load genres when app opens ──
+        loadGenres();
+
+        // ── DATABASE: Save button ──
+        button1.setOnAction(e -> {
+            String name = textField1.getText();
+            if (!name.isEmpty()) {
+                saveGenre(name);
+                textField1.clear();
+            } else {
+                System.out.println("Please enter a genre name!");
+            }
+        });
+
+        // ── DATABASE: Remove button ──
+        button2.setOnAction(e -> {
+            String selected = comboBox.getValue();
+            if (selected != null) {
+                removeGenre(selected);
+            } else {
+                System.out.println("Please select a genre to remove!");
+            }
+        });
+
         Scene scene = new Scene(gridPane);
         stage.setTitle("Genres");
         stage.setScene(scene);
         stage.show();
+    }
+
+    // ── SAVE genre to database ──
+    private void saveGenre(String genreName) {
+        String sql = "INSERT INTO genres (genre, isactive) VALUES (?, 1)";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            pst.setString(1, genreName);
+            pst.executeUpdate();
+            System.out.println("Genre saved: " + genreName);
+            loadGenres(); // refresh ComboBox
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ── LOAD all active genres into ComboBox ──
+    private void loadGenres() {
+        String sql = "SELECT genre FROM genres WHERE isactive = 1";
+        try (Connection conn = DBConnection.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            comboBox.getItems().clear();
+            while (rs.next()) {
+                comboBox.getItems().add(rs.getString("genre"));
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ── REMOVE genre (set isactive = 0) ──
+    private void removeGenre(String genreName) {
+        String sql = "UPDATE genres SET isactive = 0 WHERE genre = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            pst.setString(1, genreName);
+            pst.executeUpdate();
+            System.out.println("Genre removed: " + genreName);
+            loadGenres(); // refresh ComboBox
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {

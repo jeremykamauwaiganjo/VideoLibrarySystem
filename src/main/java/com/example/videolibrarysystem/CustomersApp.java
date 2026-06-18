@@ -8,8 +8,16 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class CustomersApp extends Application {
+
+    // Move comboBox to class level so all methods can access it
+    private ComboBox<String> registeredComboBox = new ComboBox<>();
 
     @Override
     public void start(Stage stage) {
@@ -21,7 +29,6 @@ public class CustomersApp extends Application {
         TextField nameField = new TextField();
         TextField phoneField = new TextField();
         TextField emailField = new TextField();
-        ComboBox<String> registeredComboBox = new ComboBox<>();
 
         Button saveButton = new Button("Save Customer");
         Button removeButton = new Button("Remove Customer");
@@ -58,10 +65,91 @@ public class CustomersApp extends Application {
         emailField.setMaxWidth(Double.MAX_VALUE);
         registeredComboBox.setMaxWidth(Double.MAX_VALUE);
 
+        // ── DATABASE: load customers when app opens ──
+        loadCustomers();
+
+        // ── DATABASE: Save button ──
+        saveButton.setOnAction(e -> {
+            String name = nameField.getText();
+            String phone = phoneField.getText();
+            String email = emailField.getText();
+
+            if (!name.isEmpty() && !phone.isEmpty() && !email.isEmpty()) {
+                saveCustomer(name, phone, email);
+                // clear fields after saving
+                nameField.clear();
+                phoneField.clear();
+                emailField.clear();
+            } else {
+                System.out.println("Please fill in all fields!");
+            }
+        });
+
+        // ── DATABASE: Remove button ──
+        removeButton.setOnAction(e -> {
+            String selected = registeredComboBox.getValue();
+            if (selected != null) {
+                removeCustomer(selected);
+            } else {
+                System.out.println("Please select a customer to remove!");
+            }
+        });
+
         Scene scene = new Scene(gridPane);
         stage.setTitle("Customers");
         stage.setScene(scene);
         stage.show();
+    }
+
+    // ── SAVE customer to database ──
+    private void saveCustomer(String name, String phone, String email) {
+        String sql = "INSERT INTO clients (fullname, phone, email, isactive) VALUES (?, ?, ?, 1)";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            pst.setString(1, name);
+            pst.setString(2, phone);
+            pst.setString(3, email);
+            pst.executeUpdate();
+            System.out.println("Customer saved: " + name);
+            loadCustomers(); // refresh ComboBox
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ── LOAD all active customers into ComboBox ──
+    private void loadCustomers() {
+        String sql = "SELECT fullname FROM clients WHERE isactive = 1";
+        try (Connection conn = DBConnection.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            registeredComboBox.getItems().clear();
+            while (rs.next()) {
+                registeredComboBox.getItems().add(rs.getString("fullname"));
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ── REMOVE customer (set isactive = 0) ──
+    private void removeCustomer(String customerName) {
+        String sql = "UPDATE clients SET isactive = 0 WHERE fullname = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            pst.setString(1, customerName);
+            pst.executeUpdate();
+            System.out.println("Customer removed: " + customerName);
+            loadCustomers(); // refresh ComboBox
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {

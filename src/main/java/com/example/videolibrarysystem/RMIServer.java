@@ -3,11 +3,6 @@ package com.example.videolibrarysystem;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
-/**
- * RMI Server for the Video Library System.
- * Run this on the server computer.
- * @author YourName
- */
 public class RMIServer {
     public static void main(String[] args) {
         try {

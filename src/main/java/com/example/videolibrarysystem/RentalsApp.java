@@ -16,7 +16,6 @@ import java.sql.Statement;
 
 public class RentalsApp extends Application {
 
-    // All ComboBoxes at class level
     private ComboBox<String> customerComboBox = new ComboBox<>();
     private ComboBox<String> genreComboBox = new ComboBox<>();
     private ComboBox<String> moviesComboBox = new ComboBox<>();

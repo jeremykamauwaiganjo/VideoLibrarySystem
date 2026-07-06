@@ -14,14 +14,31 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+/**
+ * Movies GUI for the Video Library System.
+ * Allows adding and removing movies from the database.
+ * @author YourName
+ */
 public class MoviesApp extends Application {
 
-    // Move ComboBoxes to class level so all methods can access them
+    // Class level so all methods can access them
     private ComboBox<String> genreComboBox = new ComboBox<>();
     private ComboBox<String> registeredComboBox = new ComboBox<>();
 
     @Override
     public void start(Stage stage) {
+        // start() now just calls getPane()
+        Scene scene = new Scene(getPane());
+        stage.setTitle("Movies");
+        stage.setScene(scene);
+        stage.show();
+    }
+
+    /**
+     * Returns the GridPane for embedding in tabs from AdminApp.
+     * @return GridPane with all movie controls
+     */
+    public GridPane getPane() {
         Text text1 = new Text("Genres:");
         Text text2 = new Text("Name:");
         Text text3 = new Text("Registered:");
@@ -59,10 +76,10 @@ public class MoviesApp extends Application {
         registeredComboBox.setMaxWidth(Double.MAX_VALUE);
         nameField.setMaxWidth(Double.MAX_VALUE);
 
-        // ── DATABASE: Load genres when app opens ──
+        // Load genres when pane opens
         loadGenres();
 
-        // ── When genre changes, load movies for that genre ──
+        // When genre changes load its movies
         genreComboBox.setOnAction(e -> {
             String selectedGenre = genreComboBox.getValue();
             if (selectedGenre != null) {
@@ -70,11 +87,10 @@ public class MoviesApp extends Application {
             }
         });
 
-        // ── DATABASE: Save Movie button ──
+        // Save Movie button
         saveButton.setOnAction(e -> {
             String genre = genreComboBox.getValue();
             String name = nameField.getText();
-
             if (genre != null && !name.isEmpty()) {
                 saveMovie(name, genre);
                 nameField.clear();
@@ -83,7 +99,7 @@ public class MoviesApp extends Application {
             }
         });
 
-        // ── DATABASE: Remove Movie button ──
+        // Remove Movie button
         removeButton.setOnAction(e -> {
             String selected = registeredComboBox.getValue();
             if (selected != null) {
@@ -93,13 +109,12 @@ public class MoviesApp extends Application {
             }
         });
 
-        Scene scene = new Scene(gridPane);
-        stage.setTitle("Movies");
-        stage.setScene(scene);
-        stage.show();
+        return gridPane; // ← returns instead of showing stage
     }
 
-    // ── LOAD all active genres into genreComboBox ──
+    /**
+     * Loads all active genres into genreComboBox.
+     */
     private void loadGenres() {
         String sql = "SELECT genre FROM genres WHERE isactive = 1";
         try (Connection conn = DBConnection.getConnection();
@@ -116,7 +131,10 @@ public class MoviesApp extends Application {
         }
     }
 
-    // ── LOAD movies by selected genre into registeredComboBox ──
+    /**
+     * Loads movies for the selected genre into registeredComboBox.
+     * @param genre the selected genre name
+     */
     private void loadMoviesByGenre(String genre) {
         String sql = "SELECT m.title FROM movies m " +
                 "JOIN genres g ON m.genre_id = g.id " +
@@ -136,7 +154,11 @@ public class MoviesApp extends Application {
         }
     }
 
-    // ── SAVE movie to database ──
+    /**
+     * Saves a new movie to the database linked to a genre.
+     * @param title name of the movie
+     * @param genre genre the movie belongs to
+     */
     private void saveMovie(String title, String genre) {
         String sql = "INSERT INTO movies (genre_id, title, isactive) " +
                 "VALUES ((SELECT id FROM genres WHERE genre = ?), ?, 1)";
@@ -147,14 +169,17 @@ public class MoviesApp extends Application {
             pst.setString(2, title);
             pst.executeUpdate();
             System.out.println("Movie saved: " + title);
-            loadMoviesByGenre(genre); // refresh registered ComboBox
+            loadMoviesByGenre(genre);
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    // ── REMOVE movie (set isactive = 0) ──
+    /**
+     * Removes a movie by setting isactive to 0.
+     * @param movieTitle title of the movie to remove
+     */
     private void removeMovie(String movieTitle) {
         String sql = "UPDATE movies SET isactive = 0 WHERE title = ?";
         try (Connection conn = DBConnection.getConnection();
@@ -165,7 +190,7 @@ public class MoviesApp extends Application {
             System.out.println("Movie removed: " + movieTitle);
             String selectedGenre = genreComboBox.getValue();
             if (selectedGenre != null) {
-                loadMoviesByGenre(selectedGenre); // refresh ComboBox
+                loadMoviesByGenre(selectedGenre);
             }
 
         } catch (SQLException e) {

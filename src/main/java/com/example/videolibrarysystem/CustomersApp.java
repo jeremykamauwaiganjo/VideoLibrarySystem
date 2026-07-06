@@ -14,13 +14,30 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+/**
+ * Customers GUI for the Video Library System.
+ * Allows adding and removing customers from the database.
+ * @author YourName
+ */
 public class CustomersApp extends Application {
 
-    // Move comboBox to class level so all methods can access it
+    // Class level so all methods can access it
     private ComboBox<String> registeredComboBox = new ComboBox<>();
 
     @Override
     public void start(Stage stage) {
+        // start() now just calls getPane()
+        Scene scene = new Scene(getPane());
+        stage.setTitle("Customers");
+        stage.setScene(scene);
+        stage.show();
+    }
+
+    /**
+     * Returns the GridPane for embedding in tabs from AdminApp.
+     * @return GridPane with all customer controls
+     */
+    public GridPane getPane() {
         Text text1 = new Text("Name:");
         Text text2 = new Text("Phone:");
         Text text3 = new Text("Email:");
@@ -65,18 +82,16 @@ public class CustomersApp extends Application {
         emailField.setMaxWidth(Double.MAX_VALUE);
         registeredComboBox.setMaxWidth(Double.MAX_VALUE);
 
-        // ── DATABASE: load customers when app opens ──
+        // Load customers when pane opens
         loadCustomers();
 
-        // ── DATABASE: Save button ──
+        // Save button
         saveButton.setOnAction(e -> {
             String name = nameField.getText();
             String phone = phoneField.getText();
             String email = emailField.getText();
-
             if (!name.isEmpty() && !phone.isEmpty() && !email.isEmpty()) {
                 saveCustomer(name, phone, email);
-                // clear fields after saving
                 nameField.clear();
                 phoneField.clear();
                 emailField.clear();
@@ -85,7 +100,7 @@ public class CustomersApp extends Application {
             }
         });
 
-        // ── DATABASE: Remove button ──
+        // Remove button
         removeButton.setOnAction(e -> {
             String selected = registeredComboBox.getValue();
             if (selected != null) {
@@ -95,13 +110,15 @@ public class CustomersApp extends Application {
             }
         });
 
-        Scene scene = new Scene(gridPane);
-        stage.setTitle("Customers");
-        stage.setScene(scene);
-        stage.show();
+        return gridPane; // ← returns instead of showing stage
     }
 
-    // ── SAVE customer to database ──
+    /**
+     * Saves a new customer to the database.
+     * @param name customer full name
+     * @param phone customer phone number
+     * @param email customer email address
+     */
     private void saveCustomer(String name, String phone, String email) {
         String sql = "INSERT INTO clients (fullname, phone, email, isactive) VALUES (?, ?, ?, 1)";
         try (Connection conn = DBConnection.getConnection();
@@ -112,14 +129,16 @@ public class CustomersApp extends Application {
             pst.setString(3, email);
             pst.executeUpdate();
             System.out.println("Customer saved: " + name);
-            loadCustomers(); // refresh ComboBox
+            loadCustomers();
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    // ── LOAD all active customers into ComboBox ──
+    /**
+     * Loads all active customers into the ComboBox.
+     */
     private void loadCustomers() {
         String sql = "SELECT fullname FROM clients WHERE isactive = 1";
         try (Connection conn = DBConnection.getConnection();
@@ -136,7 +155,10 @@ public class CustomersApp extends Application {
         }
     }
 
-    // ── REMOVE customer (set isactive = 0) ──
+    /**
+     * Removes a customer by setting isactive to 0.
+     * @param customerName name of the customer to remove
+     */
     private void removeCustomer(String customerName) {
         String sql = "UPDATE clients SET isactive = 0 WHERE fullname = ?";
         try (Connection conn = DBConnection.getConnection();
@@ -145,7 +167,7 @@ public class CustomersApp extends Application {
             pst.setString(1, customerName);
             pst.executeUpdate();
             System.out.println("Customer removed: " + customerName);
-            loadCustomers(); // refresh ComboBox
+            loadCustomers();
 
         } catch (SQLException e) {
             e.printStackTrace();

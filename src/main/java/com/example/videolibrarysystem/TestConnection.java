@@ -1,5 +1,5 @@
 package com.example.videolibrarysystem;
-import java.sql.Connection;      // ← add this
+import java.sql.Connection;
 import java.sql.SQLException;
 
 public class TestConnection {

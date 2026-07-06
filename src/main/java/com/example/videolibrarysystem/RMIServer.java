@@ -17,7 +17,7 @@ public class RMIServer {
 
             System.out.println("RMI Video Library Server is running...");
             System.out.println("Listening on port 1099");
-            System.out.println("Your IP: 192.168.56.1");
+            System.out.println("Your IP: 10.55.6.23");
             System.out.println("Waiting for clients to connect...");
 
         } catch (Exception e) {

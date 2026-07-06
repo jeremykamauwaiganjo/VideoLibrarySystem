@@ -14,6 +14,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+
 public class RentalsApp extends Application {
 
     private ComboBox<String> customerComboBox = new ComboBox<>();
@@ -24,6 +25,14 @@ public class RentalsApp extends Application {
 
     @Override
     public void start(Stage stage) {
+        Scene scene = new Scene(getPane());
+        stage.setTitle("Rentals");
+        stage.setScene(scene);
+        stage.show();
+    }
+
+
+    public GridPane getPane() {
         Text text1 = new Text("Customer:");
         Text text2 = new Text("Genre:");
         Text text3 = new Text("Movies:");
@@ -69,11 +78,11 @@ public class RentalsApp extends Application {
         borrowedComboBox.setMaxWidth(Double.MAX_VALUE);
         returnedComboBox.setMaxWidth(Double.MAX_VALUE);
 
-        // ── DATABASE: Load customers and genres when app opens ──
+        // Load customers and genres when pane opens
         loadCustomers();
         loadGenres();
 
-        // ── When genre changes load its movies ──
+        // When genre changes load its movies
         genreComboBox.setOnAction(e -> {
             String selectedGenre = genreComboBox.getValue();
             if (selectedGenre != null) {
@@ -81,7 +90,7 @@ public class RentalsApp extends Application {
             }
         });
 
-        // ── When customer changes load their borrowed and returned ──
+        // When customer changes load their borrowed and returned
         customerComboBox.setOnAction(e -> {
             String selectedCustomer = customerComboBox.getValue();
             if (selectedCustomer != null) {
@@ -90,7 +99,7 @@ public class RentalsApp extends Application {
             }
         });
 
-        // ── Save Rental button ──
+        // Save Rental button
         saveButton.setOnAction(e -> {
             String customer = customerComboBox.getValue();
             String movie = moviesComboBox.getValue();
@@ -101,7 +110,7 @@ public class RentalsApp extends Application {
             }
         });
 
-        // ── Return Movie button ──
+        // Return Movie button
         returnButton.setOnAction(e -> {
             String customer = customerComboBox.getValue();
             String movie = borrowedComboBox.getValue();
@@ -112,13 +121,10 @@ public class RentalsApp extends Application {
             }
         });
 
-        Scene scene = new Scene(gridPane);
-        stage.setTitle("Rentals");
-        stage.setScene(scene);
-        stage.show();
+        return gridPane;
     }
 
-    // ── LOAD customers ──
+
     private void loadCustomers() {
         String sql = "SELECT fullname FROM clients WHERE isactive = 1";
         try (Connection conn = DBConnection.getConnection();
@@ -134,7 +140,7 @@ public class RentalsApp extends Application {
         }
     }
 
-    // ── LOAD genres ──
+
     private void loadGenres() {
         String sql = "SELECT genre FROM genres WHERE isactive = 1";
         try (Connection conn = DBConnection.getConnection();
@@ -150,7 +156,7 @@ public class RentalsApp extends Application {
         }
     }
 
-    // ── LOAD movies by genre ──
+
     private void loadMoviesByGenre(String genre) {
         String sql = "SELECT m.title FROM movies m " +
                 "JOIN genres g ON m.genre_id = g.id " +
@@ -169,7 +175,7 @@ public class RentalsApp extends Application {
         }
     }
 
-    // ── SAVE rental ──
+
     private void saveRental(String customerName, String movieTitle) {
         String sql = "INSERT INTO rentals (client_id, movie_id, returned) " +
                 "VALUES (" +
@@ -189,7 +195,7 @@ public class RentalsApp extends Application {
         }
     }
 
-    // ── LOAD borrowed movies ──
+
     private void loadBorrowed(String customerName) {
         String sql = "SELECT m.title FROM rentals r " +
                 "JOIN movies m ON r.movie_id = m.id " +
@@ -209,7 +215,7 @@ public class RentalsApp extends Application {
         }
     }
 
-    // ── RETURN a movie ──
+
     private void returnMovie(String customerName, String movieTitle) {
         String sql = "UPDATE rentals SET returned = 1 " +
                 "WHERE client_id = (SELECT id FROM clients WHERE fullname = ?) " +
@@ -229,7 +235,7 @@ public class RentalsApp extends Application {
         }
     }
 
-    // ── LOAD returned movies ──
+
     private void loadReturned(String customerName) {
         String sql = "SELECT m.title FROM rentals r " +
                 "JOIN movies m ON r.movie_id = m.id " +

@@ -14,13 +14,23 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+
 public class GenresApp extends Application {
 
-    // Make comboBox a class variable so all methods can access it
+    // Class level so all methods can access it
     private ComboBox<String> comboBox = new ComboBox<>();
 
     @Override
     public void start(Stage stage) {
+        // start() now just calls getPane()
+        Scene scene = new Scene(getPane());
+        stage.setTitle("Genres");
+        stage.setScene(scene);
+        stage.show();
+    }
+
+
+    public GridPane getPane() {
         Text text1 = new Text("Name:");
         Text text2 = new Text("Registered:");
         TextField textField1 = new TextField();
@@ -50,10 +60,10 @@ public class GenresApp extends Application {
         button2.setMaxWidth(Double.MAX_VALUE);
         comboBox.setMaxWidth(Double.MAX_VALUE);
 
-        // ── DATABASE: load genres when app opens ──
+        // Load genres when pane opens
         loadGenres();
 
-        // ── DATABASE: Save button ──
+        // Save button
         button1.setOnAction(e -> {
             String name = textField1.getText();
             if (!name.isEmpty()) {
@@ -64,7 +74,7 @@ public class GenresApp extends Application {
             }
         });
 
-        // ── DATABASE: Remove button ──
+        // Remove button
         button2.setOnAction(e -> {
             String selected = comboBox.getValue();
             if (selected != null) {
@@ -74,13 +84,10 @@ public class GenresApp extends Application {
             }
         });
 
-        Scene scene = new Scene(gridPane);
-        stage.setTitle("Genres");
-        stage.setScene(scene);
-        stage.show();
+        return gridPane; // ← returns instead of showing stage
     }
 
-    // ── SAVE genre to database ──
+
     private void saveGenre(String genreName) {
         String sql = "INSERT INTO genres (genre, isactive) VALUES (?, 1)";
         try (Connection conn = DBConnection.getConnection();
@@ -89,14 +96,14 @@ public class GenresApp extends Application {
             pst.setString(1, genreName);
             pst.executeUpdate();
             System.out.println("Genre saved: " + genreName);
-            loadGenres(); // refresh ComboBox
+            loadGenres();
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    // ── LOAD all active genres into ComboBox ──
+
     private void loadGenres() {
         String sql = "SELECT genre FROM genres WHERE isactive = 1";
         try (Connection conn = DBConnection.getConnection();
@@ -113,7 +120,7 @@ public class GenresApp extends Application {
         }
     }
 
-    // ── REMOVE genre (set isactive = 0) ──
+
     private void removeGenre(String genreName) {
         String sql = "UPDATE genres SET isactive = 0 WHERE genre = ?";
         try (Connection conn = DBConnection.getConnection();
@@ -122,7 +129,7 @@ public class GenresApp extends Application {
             pst.setString(1, genreName);
             pst.executeUpdate();
             System.out.println("Genre removed: " + genreName);
-            loadGenres(); // refresh ComboBox
+            loadGenres();
 
         } catch (SQLException e) {
             e.printStackTrace();
